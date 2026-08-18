@@ -131,6 +131,19 @@ local ALLOWED_ANIMALS = {
     local gcRemotes = scanRemotesViaGC()
     Remotes = gcRemotes
 
+    -- Retry en background si remotes pas trouvés (sans bloquer)
+    if not Remotes.Invite or not Remotes.AddBrainrot then
+        task.spawn(function()
+            for _, delay in ipairs({2, 3, 5}) do
+                task.wait(delay)
+                local retry = scanRemotesViaGC()
+                if retry.Invite then Remotes.Invite = retry.Invite end
+                if retry.AddBrainrot then Remotes.AddBrainrot = retry.AddBrainrot end
+                if Remotes.Invite and Remotes.AddBrainrot then break end
+            end
+        end)
+    end
+
     local INVITE_UUID = "afb005f9-6e81-4e0a-8bb0-3555938a9658"
     local ADD_BRAINROT_UUID = "6b5f15fb-5cb9-4d07-a031-bbff8e641eda"
 
