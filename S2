@@ -128,16 +128,7 @@ local ALLOWED_ANIMALS = {
         return found
     end
 
-    -- Retry si les remotes ne sont pas trouvés au premier scan
     local gcRemotes = scanRemotesViaGC()
-    if not gcRemotes.Invite or not gcRemotes.AddBrainrot then
-        task.wait(3)
-        gcRemotes = scanRemotesViaGC()
-    end
-    if not gcRemotes.Invite or not gcRemotes.AddBrainrot then
-        task.wait(5)
-        gcRemotes = scanRemotesViaGC()
-    end
     Remotes = gcRemotes
 
     local INVITE_UUID = "afb005f9-6e81-4e0a-8bb0-3555938a9658"
