@@ -1,1 +1,52 @@
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/69f640771c8046d97fc4ce2c29dec393.lua"))()
+-- S2 Billboard — standalone (séparé du script duel)
+-- Affiche "S2" avec "discord.gg/S2" juste en dessous, au-dessus de ta tête.
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local function attach(char)
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
+    if not hrp then return end
+
+    -- nettoyer un ancien billboard
+    local old = hrp:FindFirstChild("S2Billboard")
+    if old then old:Destroy() end
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "S2Billboard"
+    bb.Adornee = hrp
+    bb.Size = UDim2.new(0, 150, 0, 48)
+    bb.StudsOffset = Vector3.new(0, 2.2, 0)
+    bb.AlwaysOnTop = true
+    bb.MaxDistance = 1000
+    bb.Parent = hrp
+
+    -- Titre S2
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, 0, 0.6, 0)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.Font = Enum.Font.GothamBold
+    title.Text = "S2"
+    title.TextScaled = true
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextStrokeTransparency = 0
+    title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    title.Parent = bb
+
+    -- Discord en dessous
+    local discord = Instance.new("TextLabel")
+    discord.BackgroundTransparency = 1
+    discord.Size = UDim2.new(1, 0, 0.4, 0)
+    discord.Position = UDim2.new(0, 0, 0.6, 0)
+    discord.Font = Enum.Font.GothamSemibold
+    discord.Text = "discord.gg/S2"
+    discord.TextScaled = true
+    discord.TextColor3 = Color3.fromRGB(120, 170, 255)
+    discord.TextStrokeTransparency = 0
+    discord.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    discord.Parent = bb
+end
+
+if lp.Character then attach(lp.Character) end
+lp.CharacterAdded:Connect(attach)
